@@ -157,8 +157,14 @@ impl State<Action, Player> for TicTacToe {
         }
     }
 
-    fn is_terminal(&self) -> bool {
-        self.is_win(self.turn) || self.is_win(self.turn.other()) || self.get_number_of_moves() == 0
+    fn get_winner(&self) -> Option<Player> {
+        if self.is_win(self.turn) {
+            Some(self.turn)
+        } else if self.is_win(self.turn.other()) {
+            Some(self.turn.other())
+        } else {
+            None
+        }
     }
 
     fn get_current_player(&self) -> &Player {

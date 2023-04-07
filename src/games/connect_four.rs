@@ -1,316 +1,316 @@
-// #[derive(Copy, Clone)]
-// struct World<RedAgent: Agent, YellowAgent: Agent> {
-//     board: Board,
-//     turn: Player,
-//     winner: Option<Player>,
-//     red_agent: RedAgent,
-//     yellow_agent: YellowAgent,
-// }
+use crate::agents::human::{get_int_input, ActionSelector};
+use crate::game::{Action as IAction, Player as IPlayer, State};
+use std::fmt::Display;
+use std::fmt::Write;
 
-// impl<RedAgent: Agent, YellowAgent: Agent> World<RedAgent, YellowAgent> {
-//     fn new(red_agent: RedAgent, yellow_agent: YellowAgent) -> World<RedAgent, YellowAgent> {
-//         World {
-//             board: [[None; 7]; 6],
-//             turn: Player::Red,
-//             winner: None,
-//             red_agent: red_agent,
-//             yellow_agent: yellow_agent,
-//         }
-//     }
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Player {
+    X,
+    O,
+}
 
-//     fn play(&mut self, col: usize) {
-//         for row in self.board.iter_mut().rev() {
-//             if row[col].is_none() {
-//                 row[col] = Some(self.turn);
-//                 break;
-//             }
-//         }
-//         self.turn = self.turn.other();
+impl Player {
+    fn other(&self) -> Player {
+        match self {
+            Player::X => Player::O,
+            Player::O => Player::X,
+        }
+    }
+}
 
-//         self.check_winner();
-//     }
+#[derive(Clone, Debug)]
+struct Board([[Option<Player>; 7]; 6]);
 
-//     fn check_winner(&mut self) {
-//         // Check rows
-//         for row in self.board.iter() {
-//             let mut streak = 0;
-//             let mut last = None;
-//             for loc in row.iter() {
-//                 if loc == &last {
-//                     streak += 1;
-//                 } else {
-//                     streak = 1;
-//                     last = *loc;
-//                 }
-//                 if streak == 4 && last.is_some() {
-//                     self.winner = last;
-//                     return;
-//                 }
-//             }
-//         }
+#[derive(Copy, Clone, Debug)]
+pub struct Action(usize);
 
-//         // Check columns
-//         for col in 0..7 {
-//             let mut streak = 0;
-//             let mut last = None;
-//             for row in self.board.iter() {
-//                 let loc = row[col];
-//                 if loc == last {
-//                     streak += 1;
-//                 } else {
-//                     streak = 1;
-//                     last = loc;
-//                 }
-//                 if streak == 4 && last.is_some() {
-//                     self.winner = last;
-//                     return;
-//                 }
-//             }
-//         }
+impl IAction for Action {}
+impl IPlayer for Player {}
 
-//         // Check diagonals
-//         for row in 0..3 {
-//             for col in 0..4 {
-//                 let mut streak = 0;
-//                 let mut last = None;
-//                 for i in 0..4 {
-//                     let loc = self.board[row + i][col + i];
-//                     if loc == last {
-//                         streak += 1;
-//                     } else {
-//                         streak = 1;
-//                         last = loc;
-//                     }
-//                     if streak == 4 && last.is_some() {
-//                         self.winner = last;
-//                         return;
-//                     }
-//                 }
-//             }
-//         }
+#[derive(Clone, Debug)]
+pub struct ConnectFour {
+    board: Board,
+    turn: Player,
+    winner: Option<Player>,
+}
 
-//         for row in 0..3 {
-//             for col in 3..7 {
-//                 let mut streak = 0;
-//                 let mut last = None;
-//                 for i in 0..4 {
-//                     let loc = self.board[row + i][col - i];
-//                     if loc == last {
-//                         streak += 1;
-//                     } else {
-//                         streak = 1;
-//                         last = loc;
-//                     }
-//                     if streak == 4 && last.is_some() {
-//                         self.winner = last;
-//                         return;
-//                     }
-//                 }
-//             }
-//         }
+impl ConnectFour {
+    pub fn new() -> ConnectFour {
+        ConnectFour {
+            board: Board([[None; 7]; 6]),
+            turn: Player::X,
+            winner: None,
+        }
+    }
+}
 
-//     }
+impl State<Action, Player> for ConnectFour {
+    fn evaluate(&self, player: &Player) -> i64 {
+        if self.winner == Some(*player) {
+            i64::MAX
+        } else if self.winner == Some(player.other()) {
+            i64::MIN
+        } else {
+            self.board.get_score(player)
+        }
+    }
 
-//     fn play_best_move(&mut self, depth: usize) {
-//         if let Some((col, _)) = self.get_best_move(depth) {
-//             self.play(col);
-//         }
-//     }
+    fn next_state(&self, action: &Action) -> Self {
+        let mut new_board = self.board.clone();
+        for row in new_board.0.iter_mut().rev() {
+            if row[action.0].is_none() {
+                row[action.0] = Some(self.turn);
+                break;
+            }
+        }
+        ConnectFour {
+            winner: new_board.check_winner(),
+            board: new_board,
+            turn: self.turn.other(),
+        }
+    }
 
-//     fn get_moves(&self) -> [bool; 7] {
-//         let mut moves = [false; 7];
-//         for (i, col) in self.board.iter().next().unwrap().iter().enumerate() {
-//             if col.is_none() {
-//                 moves[i] = true;
-//             }
-//         }
-//         return moves;
-//     }
+    fn get_actions(&self, player: &Player) -> Vec<Action> {
+        let mut actions = Vec::new();
+        if self.turn == *player {
+            for i in 0..7 {
+                if self.board.0[0][i].is_none() {
+                    actions.push(Action(i));
+                }
+            }
+        }
+        actions
+    }
 
-//     fn get_best_move(&self, depth: usize) -> Option<(usize, i32)> {
-//         let mut best_move = None;
-//         let mut best_score = i32::MIN;
-//         for (i, valid) in self.get_moves().iter().enumerate() {
-//             if *valid {
-//                 let score = self.eval_move_recursive(self.turn, i, depth);
-//                 if score > best_score {
-//                     best_score = score;
-//                     best_move = Some(i);
-//                 }
-//             }
-//         }
-//         if let Some(m) = best_move {
-//      Some(            (m, best_score))
-//         } else {None}
-//     }
+    fn get_winner(&self) -> Option<Player> {
+        self.winner
+    }
 
-//     fn eval_move(&self, perspective: Player, col: usize) -> i32 {
-//         let mut new_world = self.clone();
-//         new_world.play(col);
-//         new_world.evaluate(perspective)
-//     }
+    fn get_current_player(&self) -> &Player {
+        &self.turn
+    }
+}
 
-//     fn eval_move_recursive(&self, perspective: Player, col: usize, depth: usize) -> i32 {
-//         let mut new_world = self.clone();
-//         new_world.play(col);
-//         new_world.evaluate_recursive(perspective, depth)
-//     }
+impl Display for Action {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
-//     fn evaluate(&self, perspective: Player) -> i32 {
-//         match self.winner {
-//             Some(player) => if player == perspective { i32::MAX } else { i32::MIN },
-//             None => self.heuristic(perspective),
-//         }
-//     }
+impl Display for ConnectFour {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let board = self.board.to_string();
+        write!(f, "{}", board)?;
 
-//     fn evaluate_recursive(&self, perspective: Player, depth: usize) -> i32 {
-//         match self.winner {
-//             Some(player) => if player == perspective { i32::MAX } else { i32::MIN },
-//             None => {
-//                 if depth == 0 {
-//                     return self.heuristic(perspective);
-//                 } else if let Some((_, score)) = self.get_best_move(depth - 1) {
-//                     return score;
-//                 } else {
-//                     return 0;
-//                 }
-//             },
-//         }
-//     }
+        if self.winner.is_some() {
+            write!(f, "Winner: {:?}", self.winner.unwrap())?;
+        } else {
+            write!(f, "Turn: {:?}", self.turn)?;
+        }
 
-//     fn heuristic(&self, perspective: Player) -> i32 {
-//         let mut score = 0;
+        Ok(())
+    }
+}
 
-//         // Check rows
-//         for row in self.board.iter() {
-//             let mut streak = 0;
-//             let mut last = None;
-//             for loc in row.iter() {
-//                 if loc == &last {
-//                     streak += 1;
-//                 } else {
-//                     streak = 1;
-//                     last = *loc;
-//                 }
-//                 if streak >= 2 {
-//                     if let Some(p) = last {
-//                         let modifier = if p == perspective { 1 } else { -1 };
-//                         score += streak * streak * modifier;
-//                     }
-//                 }
-//             }
-//         }
+impl Board {
+    fn check_winner(&self) -> Option<Player> {
+        // Check rows
+        for row in self.0.iter() {
+            let mut streak = 0;
+            let mut last = None;
+            for loc in row.iter() {
+                if loc == &last {
+                    streak += 1;
+                } else {
+                    streak = 1;
+                    last = *loc;
+                }
+                if streak == 4 && last.is_some() {
+                    return last;
+                }
+            }
+        }
 
-//         // Check columns
-//         for col in 0..7 {
-//             let mut streak = 0;
-//             let mut last = None;
-//             for row in self.board.iter() {
-//                 let loc = row[col];
-//                 if loc == last {
-//                     streak += 1;
-//                 } else {
-//                     streak = 1;
-//                     last = loc;
-//                 }
-//                 if streak >= 2 {
-//                     if let Some(p) = last {
-//                         let modifier = if p == perspective { 1 } else { -1 };
-//                         score += streak * streak * modifier;
-//                     }
-//                 }
-//             }
-//         }
+        // Check columns
+        for col in 0..7 {
+            let mut streak = 0;
+            let mut last = None;
+            for row in self.0.iter() {
+                let loc = row[col];
+                if loc == last {
+                    streak += 1;
+                } else {
+                    streak = 1;
+                    last = loc;
+                }
+                if streak == 4 && last.is_some() {
+                    return last;
+                }
+            }
+        }
 
-//         // Check diagonals
-//         for row in 0..3 {
-//             for col in 0..4 {
-//                 let mut streak = 0;
-//                 let mut last = None;
-//                 for i in 0..4 {
-//                     let loc = self.board[row + i][col + i];
-//                     if loc == last {
-//                         streak += 1;
-//                     } else {
-//                         streak = 1;
-//                         last = loc;
-//                     }
-//                     if streak >= 2 {
-//                         if let Some(p) = last {
-//                             let modifier = if p == perspective { 1 } else { -1 };
-//                             score += streak * streak * modifier;
-//                         }
-//                     }
-//                 }
-//             }
-//         }
+        // Check diagonals
+        for row in 0..3 {
+            for col in 0..4 {
+                let mut streak = 0;
+                let mut last = None;
+                for i in 0..4 {
+                    let loc = self.0[row + i][col + i];
+                    if loc == last {
+                        streak += 1;
+                    } else {
+                        streak = 1;
+                        last = loc;
+                    }
+                    if streak == 4 && last.is_some() {
+                        return last;
+                    }
+                }
+            }
+        }
 
-//         for row in 0..3 {
-//             for col in 3..7 {
-//                 let mut streak = 0;
-//                 let mut last = None;
-//                 for i in 0..4 {
-//                     let loc = self.board[row + i][col - i];
-//                     if loc == last {
-//                         streak += 1;
-//                     } else {
-//                         streak = 1;
-//                         last = loc;
-//                     }
-//                     if streak >= 2 {
-//                         if let Some(p) = last {
-//                             let modifier = if p == perspective { 1 } else { -1 };
-//                             score += streak * streak * modifier;
-//                         }
-//                     }
-//                 }
-//             }
-//         }
+        for row in 0..3 {
+            for col in 3..7 {
+                let mut streak = 0;
+                let mut last = None;
+                for i in 0..4 {
+                    let loc = self.0[row + i][col - i];
+                    if loc == last {
+                        streak += 1;
+                    } else {
+                        streak = 1;
+                        last = loc;
+                    }
+                    if streak == 4 && last.is_some() {
+                        return last;
+                    }
+                }
+            }
+        }
+        None
+    }
 
-//         return score;
-//     }
+    fn get_score(&self, perspective: &Player) -> i64 {
+        let mut score = 0;
 
-//     fn print(&self) {
-//         for row in self.board.iter() {
-//             print!("|");
-//             for loc in row.iter() {
-//                 match loc {
-//                     Some(Player::Red) => print!(" R "),
-//                     Some(Player::Yellow) => print!(" Y "),
-//                     None => print!("   "),
-//                 }
-//             }
-//             println!("|");
-//         }
-//         println!("|{}|", "___".repeat(7));
-//         if let Some(winner) = self.winner {
-//             println!("{} wins!", match winner {
-//                 Player::Red => "Red",
-//                 Player::Yellow => "Yellow",
-//             });
-//         } else {
-//             println!("{}'s turn", match self.turn {
-//                 Player::Red => "Red",
-//                 Player::Yellow => "Yellow",
-//             });
-//         }
-//         println!("");
-//     }
-// }
+        // Check rows
+        for row in self.0.iter() {
+            let mut streak = 0;
+            let mut last = None;
+            for loc in row.iter() {
+                if loc == &last {
+                    streak += 1;
+                } else {
+                    streak = 1;
+                    last = *loc;
+                }
+                if streak >= 2 {
+                    if let Some(p) = last {
+                        let modifier = if &p == perspective { 1 } else { -1 };
+                        score += streak * streak * modifier;
+                    }
+                }
+            }
+        }
 
-// type Board = [[Option<Player>; 7]; 6];
+        // Check columns
+        for col in 0..7 {
+            let mut streak = 0;
+            let mut last = None;
+            for row in self.0.iter() {
+                let loc = row[col];
+                if loc == last {
+                    streak += 1;
+                } else {
+                    streak = 1;
+                    last = loc;
+                }
+                if streak >= 2 {
+                    if let Some(p) = last {
+                        let modifier = if &p == perspective { 1 } else { -1 };
+                        score += streak * streak * modifier;
+                    }
+                }
+            }
+        }
 
-// #[derive(Copy, Clone, PartialEq)]
-// enum Player {
-//     Red,
-//     Yellow,
-// }
+        // Check diagonals
+        for row in 0..3 {
+            for col in 0..4 {
+                let mut streak = 0;
+                let mut last = None;
+                for i in 0..4 {
+                    let loc = self.0[row + i][col + i];
+                    if loc == last {
+                        streak += 1;
+                    } else {
+                        streak = 1;
+                        last = loc;
+                    }
+                    if streak >= 2 {
+                        if let Some(p) = last {
+                            let modifier = if &p == perspective { 1 } else { -1 };
+                            score += streak * streak * modifier;
+                        }
+                    }
+                }
+            }
+        }
 
-// impl Player {
-//     fn other(&self) -> Player {
-//         match self {
-//             Player::Red => Player::Yellow,
-//             Player::Yellow => Player::Red,
-//         }
-//     }
-// }
+        for row in 0..3 {
+            for col in 3..7 {
+                let mut streak = 0;
+                let mut last = None;
+                for i in 0..4 {
+                    let loc = self.0[row + i][col - i];
+                    if loc == last {
+                        streak += 1;
+                    } else {
+                        streak = 1;
+                        last = loc;
+                    }
+                    if streak >= 2 {
+                        if let Some(p) = last {
+                            let modifier = if &p == perspective { 1 } else { -1 };
+                            score += streak * streak * modifier;
+                        }
+                    }
+                }
+            }
+        }
+
+        return score;
+    }
+
+    fn to_string(&self) -> String {
+        let mut s = String::new();
+        for row in self.0.iter() {
+            write!(s, "|").unwrap();
+            for loc in row.iter() {
+                match loc {
+                    Some(Player::X) => write!(s, " X ").unwrap(),
+                    Some(Player::O) => write!(s, " O ").unwrap(),
+                    None => write!(s, "   ").unwrap(),
+                }
+            }
+            writeln!(s, "|").unwrap();
+        }
+        writeln!(s, "|{}|", "___".repeat(7)).unwrap();
+        s
+    }
+}
+
+pub struct ConnectFourActionSelector;
+
+impl ActionSelector for ConnectFourActionSelector {
+    type A = Action;
+    type P = Player;
+    type S = ConnectFour;
+
+    fn get_action(state: &Self::S) -> Option<Self::A> {
+        print!("{}", state.board.to_string());
+        println!("| 1  2  3  4  5  6  7 |");
+        let index = get_int_input(1..8);
+        return Some(Action(index - 1));
+    }
+}

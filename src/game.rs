@@ -1,4 +1,7 @@
-use std::{fmt::Display, marker::PhantomData};
+use std::{
+    fmt::{Debug, Display},
+    marker::PhantomData,
+};
 
 use crate::agents::Agent;
 
@@ -38,6 +41,11 @@ impl<A: Action, P: Player, S: State<A, P>> Game<A, P, S> {
             }
         }
         println!("Game over!");
+        if let Some(winner) = self.state.get_winner() {
+            println!("Winner: {:?}", winner);
+        } else {
+            println!("Draw! (there are no actions left for the current player)");
+        }
     }
 }
 
@@ -52,13 +60,17 @@ pub trait State<A: Action, P: Player>: Sized {
     fn get_actions(&self, player: &P) -> Vec<A>;
     fn get_current_player(&self) -> &P;
     fn next_state(&self, action: &A) -> Self;
-    fn is_terminal(&self) -> bool;
+    fn get_winner(&self) -> Option<P>;
+
+    fn is_terminal(&self) -> bool {
+        self.get_winner().is_some() || self.get_actions_for_current().len() == 0
+    }
 
     fn get_actions_for_current(&self) -> Vec<A> {
         self.get_actions(&self.get_current_player())
     }
 }
 
-pub trait Player: Sized + Clone {}
+pub trait Player: Sized + Clone + Debug {}
 
 pub trait Action: Sized + Clone {}
