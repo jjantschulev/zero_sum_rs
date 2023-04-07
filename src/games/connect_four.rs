@@ -310,7 +310,12 @@ impl ActionSelector for ConnectFourActionSelector {
     fn get_action(state: &Self::S) -> Option<Self::A> {
         print!("{}", state.board.to_string());
         println!("| 1  2  3  4  5  6  7 |");
-        let index = get_int_input(1..8);
+        let index = loop {
+            let index = get_int_input(1..8);
+            if state.board.0[0][index - 1].is_none() {
+                break index;
+            }
+        };
         return Some(Action(index - 1));
     }
 }
