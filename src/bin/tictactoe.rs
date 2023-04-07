@@ -1,5 +1,5 @@
 use zero_sum::{
-    agents::{human::HumanAgent, minimax::MinimaxAgent, random::RandomAgent},
+    agents::{human::HumanAgent, minimax::MinimaxAgent},
     game::Game,
     games::tictactoe::{TicTacToe, TicTacToeActionSelector},
 };
@@ -9,7 +9,6 @@ fn main() {
 
     game.add_player(HumanAgent::<TicTacToeActionSelector>::new());
     game.add_player(MinimaxAgent::new(9));
-    game.add_player(RandomAgent::new());
 
     game.play();
 
