@@ -12,7 +12,7 @@ pub struct Game<A: Action, P: Player, S: State<A, P>> {
     players: Vec<Box<dyn Fn(&S) -> Option<A>>>,
 }
 
-impl<A: Action, P: Player, S: State<A, P>> Game<A, P, S> {
+impl<A: Action, P: Player, S: State<A, P> + Display> Game<A, P, S> {
     pub fn new(state: S) -> Game<A, P, S> {
         Game {
             _action: PhantomData,
@@ -38,6 +38,7 @@ impl<A: Action, P: Player, S: State<A, P>> Game<A, P, S> {
                 let next_state = self.state.next_state(&action);
                 self.state = next_state;
                 self.players.push(player);
+                self.print();
             }
         }
         println!("Game over!");
@@ -47,9 +48,7 @@ impl<A: Action, P: Player, S: State<A, P>> Game<A, P, S> {
             println!("Draw! (there are no actions left for the current player)");
         }
     }
-}
 
-impl<A: Action, P: Player, S: State<A, P> + Display> Game<A, P, S> {
     pub fn print(&self) {
         println!("\nState: \n{}\n", self.state,);
     }

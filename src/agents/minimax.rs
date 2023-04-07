@@ -43,7 +43,13 @@ impl MinimaxAgent {
 
 impl<A: Action, P: Player, S: State<A, P>> Agent<A, P, S> for MinimaxAgent {
     fn get_action(&self, state: &S) -> Option<A> {
-        MinimaxAgent::best_action(state, self.depth).map(|(a, _)| a)
+        MinimaxAgent::best_action(state, self.depth).map(|(a, s)| {
+            println!(
+                "MinimaxAgent: expectation: {}",
+                s.evaluate(s.get_current_player())
+            );
+            a
+        })
     }
 }
 

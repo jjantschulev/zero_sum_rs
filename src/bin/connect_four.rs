@@ -7,8 +7,8 @@ use zero_sum::{
 fn main() {
     let mut game = Game::new(ConnectFour::new());
     game.add_player(HumanAgent::<ConnectFourActionSelector>::new());
+    // game.add_player(MinimaxAgent::new(8));
     game.add_player(MinimaxAgent::new(7));
 
     game.play();
-    game.print();
 }
