@@ -1,13 +1,13 @@
 use super::Agent;
 use crate::game::{Action, Player, State};
 
-pub struct MinimaxAgent {
+pub struct MaxNAgent {
     depth: usize,
 }
 
-impl MinimaxAgent {
-    pub fn new(depth: usize) -> MinimaxAgent {
-        MinimaxAgent { depth }
+impl MaxNAgent {
+    pub fn new(depth: usize) -> MaxNAgent {
+        MaxNAgent { depth }
     }
 
     fn best_action<A: Action, P: Player, S: State<A, P>>(
@@ -18,7 +18,7 @@ impl MinimaxAgent {
             .get_actions_for_current()
             .into_iter()
             .map(|a| {
-                let end_state = MinimaxAgent::eval_move_recursive(state, &a, depth);
+                let end_state = MaxNAgent::eval_move_recursive(state, &a, depth);
                 (a, end_state)
             })
             .max_by_key(|(_, end_state)| end_state.evaluate(state.get_current_player()))
@@ -33,7 +33,7 @@ impl MinimaxAgent {
         if depth == 0 || next.is_terminal() {
             return next;
         }
-        if let Some((_, state)) = MinimaxAgent::best_action(&next, depth - 1) {
+        if let Some((_, state)) = MaxNAgent::best_action(&next, depth - 1) {
             return state;
         } else {
             return next;
@@ -41,9 +41,9 @@ impl MinimaxAgent {
     }
 }
 
-impl<A: Action, P: Player, S: State<A, P>> Agent<A, P, S> for MinimaxAgent {
+impl<A: Action, P: Player, S: State<A, P>> Agent<A, P, S> for MaxNAgent {
     fn get_action(&self, state: &S) -> Option<A> {
-        MinimaxAgent::best_action(state, self.depth).map(|(a, s)| {
+        MaxNAgent::best_action(state, self.depth).map(|(a, s)| {
             println!(
                 "MinimaxAgent: expectation: {}",
                 s.evaluate(s.get_current_player())

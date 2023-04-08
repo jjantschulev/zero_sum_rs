@@ -1,5 +1,5 @@
 pub mod human;
-pub mod minimax;
+pub mod max_n;
 pub mod random;
 
 use crate::game::{Action, Player, State};
